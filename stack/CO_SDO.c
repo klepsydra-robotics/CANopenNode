@@ -256,6 +256,39 @@ static void CO_SDO_receive(void *object, const CO_CANrxMsg_t *msg){
     }
 }
 
+/*
+ * Function for accessing _SDO server parameter_ for default SDO (index 0x1200)
+ * from SDO server.
+ *
+ * For more information see file CO_SDO.h.
+ */
+uint8_t domain_value[889];
+static CO_SDO_abortCode_t CO_ODF_2120(CO_ODF_arg_t *ODF_arg);
+static CO_SDO_abortCode_t CO_ODF_2120(CO_ODF_arg_t *ODF_arg){
+    CO_SDO_abortCode_t ret = CO_SDO_AB_NONE;
+
+    if (ODF_arg->dataLength == 889) {
+        if (ODF_arg->reading) {
+            printf("CO_ODF_2120. reading value... ODF_arg->dataLength: %d\n",  ODF_arg->dataLength);
+            memcpy(ODF_arg->data, domain_value, 889);
+        }
+        else {
+            printf("CO_ODF_2120. assigning value... ODF_arg->dataLength: %d\n",  ODF_arg->dataLength);
+            memcpy(domain_value, ODF_arg->data, 889);
+        }
+    }
+    else {
+        uint32_t value;
+        value = CO_getUint32(ODF_arg->data);
+
+        /* if SDO reading Object dictionary 0x1200, add nodeId to the value */
+        if((ODF_arg->reading) && (ODF_arg->subIndex > 0U)){
+            CO_setUint32(ODF_arg->data, value);
+        }
+    }
+
+    return ret;
+}
 
 /*
  * Function for accessing _SDO server parameter_ for default SDO (index 0x1200)
@@ -639,7 +672,9 @@ uint32_t CO_SDO_readOD(CO_SDO_t *SDO, uint16_t SDOBufferSize){
     /* if domain, Object dictionary function MUST exist */
     else{
         if(ext->pODFunc == NULL){
-            return CO_SDO_AB_DEVICE_INCOMPAT;     /* general internal incompatibility in the device */
+            printf("assigning CO_ODF_2120...\n");
+            ext->pODFunc = CO_ODF_2120;
+            // return CO_SDO_AB_DEVICE_INCOMPAT;     /* general internal incompatibility in the device */
         }
     }
 
